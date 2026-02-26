@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Close → Clay Sync{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-16">
+  <div class="max-w-lg w-full">
+
+    <div class="text-center mb-10">
+      <div class="text-5xl mb-5">🔄</div>
+      <h1 class="text-3xl font-bold text-gray-900 mb-3">Close → Clay</h1>
+      <p class="text-gray-500 text-base leading-relaxed">
+        Sync Close Leads and Contacts to a Clay workbook.
+      </p>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+      <ul class="space-y-3 mb-8">
+        {% for item in [
+          ("Sync up to 50,000 Leads or Contacts per Clay workbook.", "✦"),
+          ("Initial setup takes 5-10 minutes, no code required.", "✦"),
+          ("Data is synced to Clay every hour.", "✦"),
+          ("Set up multiple syncs.", "✦")
+        ] %}
+        <li class="flex items-start gap-3 text-sm text-gray-600">
+          <span class="text-indigo-500 font-bold mt-0.5 shrink-0">{{ item[1] }}</span>
+          {{ item[0] }}
+        </li>
+        {% endfor %}
+      </ul>
+
+      <a href="{{ url_for('auth.close_login') }}"
+         class="flex items-center justify-center gap-2.5 w-full bg-black hover:bg-gray-800
+                text-white font-semibold py-3 px-6 rounded-xl transition-colors text-sm">
+        <img src="{{ url_for('static', filename='img/close-mark.svg') }}"
+             alt="Close logo"
+             class="h-4 w-auto">
+        Sign in with Close
+      </a>
+      <p class="text-center text-xs text-gray-400 mt-3">
+        This app is not officially supported or maintained by Close or Clay.
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

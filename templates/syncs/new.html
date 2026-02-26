@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}New Sync — Close → Clay{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-6 py-10">
+
+  <div class="mb-8">
+    <a href="{{ url_for('main.dashboard') }}"
+       class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+      ← Back to dashboard
+    </a>
+    <h1 class="text-2xl font-bold text-gray-900 mt-3">Create a new Sync</h1>
+    <p class="text-gray-500 text-sm mt-1">
+      Connect a set of Close records to a Clay workbook.
+    </p>
+  </div>
+
+  <form method="POST" action="{{ url_for('main.new_sync') }}" class="space-y-6">
+
+    <!-- Sync name -->
+    <div>
+      <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+        Sync name
+      </label>
+      <input type="text" id="name" name="name"
+             value="{{ form_data.get('name', '') }}"
+             placeholder="e.g. Active Leads → Clay Prospecting"
+             required
+             class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                    placeholder-gray-400" />
+    </div>
+
+    <!-- Entity type -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1.5">
+        What are you syncing?
+      </label>
+      <div class="flex gap-3">
+        {% for value, label in [('lead', 'Leads'), ('contact', 'Contacts')] %}
+        <label class="flex-1 cursor-pointer">
+          <input type="radio" name="entity_type" value="{{ value }}" class="sr-only peer"
+                 {{ 'checked' if form_data.get('entity_type', 'lead') == value else '' }}>
+          <div class="rounded-lg border-2 border-gray-200 px-4 py-3 text-center text-sm font-medium
+                      text-gray-600 transition-all
+                      peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700
+                      hover:border-gray-300">
+            {{ label }}
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Close filter JSON -->
+    <div>
+      <label for="close_query" class="block text-sm font-medium text-gray-700 mb-1.5">
+        Close filter JSON
+      </label>
+      <p class="text-xs text-gray-500 mb-2 leading-relaxed">
+        In Close, open the <strong>Leads</strong> or <strong>Contacts</strong> view, apply your filters,
+        then click <strong>Advanced Filtering → Copy as JSON</strong> and paste it here.
+      </p>
+      <textarea id="close_query" name="close_query" rows="10"
+                placeholder='{
+  "limit": null,
+  "query": { ... },
+  "results_limit": null,
+  "sort": []
+}'
+                required
+                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-mono
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                       placeholder-gray-300 resize-y">{{ form_data.get('close_query', '') }}</textarea>
+    </div>
+
+    <!-- Clay webhook URL -->
+    <div>
+      <label for="clay_webhook_url" class="block text-sm font-medium text-gray-700 mb-1.5">
+        Clay webhook URL
+      </label>
+      <div class="text-xs text-gray-500 mb-2 leading-relaxed space-y-2">
+        <p>In Clay, open your workbook, add a <strong>Webhook</strong> source, and paste the URL here.</p>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-blue-800">
+          <p class="font-medium mb-1.5">⚠️ After your first sync, enable deduplication in Clay so updates overwrite rows instead of creating duplicates:</p>
+          <ol class="list-decimal list-inside space-y-1">
+            <li>Open your Clay table → <strong>Table Settings → Deduplication</strong></li>
+            <li>Enable <strong>Auto-dedupe rows</strong></li>
+            <li>Set <strong>Dedupe via column</strong> to <strong>Close Id</strong></li>
+            <li>Select <strong>Keep newest row</strong> and save</li>
+          </ol>
+        </div>
+      </div>
+      <input type="url" id="clay_webhook_url" name="clay_webhook_url"
+             value="{{ form_data.get('clay_webhook_url', '') }}"
+             placeholder="https://api.clay.com/v3/sources/webhook/..."
+             required
+             class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                    placeholder-gray-400" />
+    </div>
+
+    <!-- Limits callout -->
+    <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800 leading-relaxed">
+      <strong>Limits:</strong> Clay workbooks support up to <strong>50,000 rows</strong> — syncs that
+      exceed this will stop at 50,000 records.
+    </div>
+
+    <div class="pt-2 flex items-center gap-3">
+      <button type="submit"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold
+                     px-5 py-2.5 rounded-lg text-sm transition-colors">
+        Create Sync
+      </button>
+      <a href="{{ url_for('main.dashboard') }}"
+         class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

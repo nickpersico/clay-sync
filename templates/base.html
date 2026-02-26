@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Close → Clay Sync{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+    .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans text-gray-900">
+
+  {% if session.user_id %}
+  <nav class="bg-white border-b border-gray-200 shrink-0">
+    <div class="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="{{ url_for('main.dashboard') }}"
+         class="font-bold text-gray-900 tracking-tight hover:text-indigo-600 transition-colors">
+        Close → Clay
+      </a>
+      <div class="flex items-center gap-5 text-sm">
+        <a href="{{ url_for('main.new_sync') }}"
+           class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded-md transition-colors">
+          + New Sync
+        </a>
+        <a href="{{ url_for('auth.logout') }}"
+           class="text-gray-400 hover:text-gray-700 transition-colors">
+          Log out
+        </a>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-4xl mx-auto px-6 pt-4 w-full space-y-2">
+      {% for category, message in messages %}
+      <div class="rounded-lg px-4 py-3 text-sm font-medium border
+        {% if category == 'error' %}bg-red-50 text-red-700 border-red-200
+        {% else %}bg-green-50 text-green-700 border-green-200{% endif %}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="flex-1 overflow-auto">
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

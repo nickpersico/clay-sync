@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}{{ sync.name }} — Close → Clay{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <a href="{{ url_for('main.dashboard') }}"
+       class="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+      ← Back to dashboard
+    </a>
+    <div class="flex items-start justify-between mt-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ sync.name }}</h1>
+        <p class="text-gray-500 text-sm mt-1">{{ sync.entity_type | title }}s</p>
+      </div>
+      <form method="POST" action="{{ url_for('main.delete_sync', sync_id=sync.id) }}"
+            onsubmit="return confirm('Delete this sync? This cannot be undone.')">
+        <button type="submit"
+                class="text-xs text-red-400 hover:text-red-600 transition-colors border
+                       border-red-200 hover:border-red-400 px-3 py-1.5 rounded-md">
+          Delete sync
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Status card -->
+  <div id="status-card" class="bg-white border border-gray-200 rounded-2xl p-6 mb-6">
+
+    <!-- Status badge + last synced -->
+    <div class="flex items-center justify-between mb-5">
+      <span id="status-badge"
+            class="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full
+        {% if sync.status == 'active' %}bg-green-100 text-green-700
+        {% elif sync.status == 'initial_syncing' %}bg-indigo-100 text-indigo-700
+        {% elif sync.status == 'error' %}bg-red-100 text-red-700
+        {% else %}bg-gray-100 text-gray-500{% endif %}">
+        <span id="status-dot" class="w-2 h-2 rounded-full
+          {% if sync.status == 'initial_syncing' %}pulse-dot bg-indigo-500
+          {% elif sync.status == 'active' %}bg-green-500
+          {% elif sync.status == 'error' %}bg-red-500
+          {% else %}bg-gray-400{% endif %}">
+        </span>
+        <span id="status-text">{{ sync.status | replace('_', ' ') | title }}</span>
+      </span>
+      <!-- data-ts is a UTC Unix-ms timestamp calculated in the route; JS formats it in local time -->
+      <p id="last-polled"
+         data-ts="{{ last_polled_ts or '' }}"
+         class="text-xs text-gray-400">
+        {# text is set by JS on load; UTC string is a no-JS fallback only #}
+        {% if sync.last_polled_at %}
+          Last synced {{ sync.last_polled_at.strftime('%b %d, %Y at %I:%M %p UTC') }}
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Progress bar (shown during initial sync / pending) -->
+    <div id="progress-section"
+         class="{% if sync.status != 'initial_syncing' %}hidden{% endif %}">
+      <div class="flex justify-between text-sm text-gray-600 mb-2">
+        <span>
+          <span id="synced-count">{{ sync.synced_records }}</span>
+          of
+          <span id="total-count">{{ sync.total_records }}</span>
+          records synced to Clay
+        </span>
+        <span id="pct-label">
+          {% if sync.total_records %}
+            {{ ((sync.synced_records / sync.total_records) * 100) | int }}%
+          {% else %}0%{% endif %}
+        </span>
+      </div>
+      <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div id="progress-bar"
+             class="h-full bg-indigo-500 rounded-full transition-all duration-500"
+             style="width: {% if sync.total_records %}{{ ((sync.synced_records / sync.total_records) * 100) | int }}{% else %}0{% endif %}%">
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">
+        Running in the background — you can safely navigate away.
+      </p>
+    </div>
+
+    <!-- Active state: stats + Sync Now button -->
+    <div id="active-section"
+         class="{% if sync.status != 'active' %}hidden{% endif %} grid grid-cols-2 gap-4">
+      <div class="bg-gray-50 rounded-xl px-4 py-3">
+        <p class="text-xs text-gray-400 mb-1">Total records</p>
+        <p id="active-total" class="text-2xl font-bold text-gray-800">
+          {{ "{:,}".format(sync.total_records or 0) }}
+        </p>
+      </div>
+      <div class="bg-gray-50 rounded-xl px-4 py-3 flex flex-col justify-between">
+        <p class="text-xs text-gray-400 mb-2">Manual sync</p>
+        <button id="sync-now-btn"
+                type="button"
+                {% if sync.status != 'active' %}disabled{% endif %}
+                class="flex items-center justify-center gap-2 w-full rounded-lg
+                       bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-colors text-white text-sm font-medium px-3 py-2">
+          <svg id="sync-spinner" class="hidden w-4 h-4 animate-spin flex-shrink-0"
+               fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10"
+                    stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span id="sync-now-text">Sync now</span>
+        </button>
+        <p class="text-xs text-gray-400 mt-2">Auto-polls every hour</p>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-section"
+         class="{% if sync.status != 'error' %}hidden{% endif %}">
+      <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+        <strong class="block mb-1">Sync failed</strong>
+        <span id="error-message">{{ sync.error_message or '' }}</span>
+      </div>
+    </div>
+
+    <!-- Pending state -->
+    {% if sync.status == 'pending' %}
+    <p class="text-sm text-gray-500">Queued — starting shortly…</p>
+    {% endif %}
+
+  </div>
+
+  <!-- Config + Clay setup -->
+  <div class="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
+    <div class="px-6 py-4">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Configuration</h2>
+      <dl class="space-y-3 text-sm">
+        <div class="flex gap-4">
+          <dt class="w-36 text-gray-500 shrink-0">Entity type</dt>
+          <dd class="text-gray-800 font-medium">{{ sync.entity_type | title }}s</dd>
+        </div>
+        <div class="flex gap-4">
+          <dt class="w-36 text-gray-500 shrink-0">Clay webhook</dt>
+          <dd class="text-gray-800 font-mono text-xs break-all">{{ sync.clay_webhook_url }}</dd>
+        </div>
+        <div class="flex gap-4">
+          <dt class="w-36 text-gray-500 shrink-0">Created</dt>
+          <dd class="text-gray-800"
+              data-ts="{{ created_ts }}"
+              id="created-at">{{ sync.created_at.strftime('%b %d, %Y at %I:%M %p UTC') }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Clay deduplication setup reminder -->
+    <div class="px-6 py-4">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Clay setup</h2>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-900 leading-relaxed">
+        <p class="font-semibold mb-2">Enable deduplication so updates overwrite rows instead of creating duplicates:</p>
+        <ol class="list-decimal list-inside space-y-1">
+          <li>Open your Clay table → <strong>Table Settings → Deduplication</strong></li>
+          <li>Enable <strong>Auto-dedupe rows</strong></li>
+          <li>Set <strong>Dedupe via column</strong> to <strong>Close Id</strong></li>
+          <li>Select <strong>Keep newest row</strong> and save</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="px-6 py-4">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Filter JSON</h2>
+      <pre class="text-xs font-mono bg-gray-50 rounded-lg p-4 overflow-x-auto text-gray-600 leading-relaxed">{{ sync.close_query | tojson(indent=2) }}</pre>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const POLL_INTERVAL_MS = 2000;
+  const MIN_SPINNER_MS   = 3500;  // minimum time to show the Syncing… state
+  const syncId           = {{ sync.id | tojson }};
+  const initialStatus    = {{ sync.status | tojson }};
+
+  function fmt(n) { return Number(n).toLocaleString(); }
+
+  // Format a Unix-ms timestamp in the user's local timezone
+  function formatLocalTime(ts) {
+    if (!ts) return '';
+    return 'Last synced ' + new Date(Number(ts)).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  // Apply local time formatting to all server-rendered timestamps on load
+  const lpEl = document.getElementById('last-polled');
+  if (lpEl && lpEl.dataset.ts) lpEl.textContent = formatLocalTime(lpEl.dataset.ts);
+
+  const createdEl = document.getElementById('created-at');
+  if (createdEl && createdEl.dataset.ts) {
+    createdEl.textContent = new Date(Number(createdEl.dataset.ts)).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  // ── Sync Now button state ───────────────────────────────────────────
+  const syncNowBtn  = document.getElementById('sync-now-btn');
+  const syncSpinner = document.getElementById('sync-spinner');
+  const syncBtnText = document.getElementById('sync-now-text');
+
+  let syncInProgress = false; // spinner is showing
+  let awaitingPoll   = false; // still waiting for server-side poll to complete
+  let pollStartTime  = null;  // anchor for detecting poll completion via last_polled_at_ts
+  let buttonClickTime = null; // when the user clicked (enforces MIN_SPINNER_MS)
+
+  function setSyncNowState(on) {
+    syncInProgress = on;
+    if (!syncNowBtn) return;
+    syncNowBtn.disabled = on;
+    if (syncSpinner) syncSpinner.classList.toggle('hidden', !on);
+    if (syncBtnText) syncBtnText.textContent = on ? 'Syncing…' : 'Sync now';
+  }
+
+  // Re-enable the button, but never before MIN_SPINNER_MS has elapsed
+  function finishSyncNow() {
+    awaitingPoll  = false;
+    pollStartTime = null;
+    const elapsed = buttonClickTime ? Date.now() - buttonClickTime : MIN_SPINNER_MS;
+    const delay   = Math.max(0, MIN_SPINNER_MS - elapsed);
+    setTimeout(() => setSyncNowState(false), delay);
+  }
+
+  // ── applyStatus — updates all UI from a progress API response ───────
+  function applyStatus(data) {
+    const { status, total_records, synced_records, error_message, last_polled_at_ts } = data;
+
+    // Status badge
+    const badge = document.getElementById('status-badge');
+    const dot   = document.getElementById('status-dot');
+    const txt   = document.getElementById('status-text');
+    const colors = {
+      active:          ['bg-green-100 text-green-700',   'bg-green-500'],
+      initial_syncing: ['bg-indigo-100 text-indigo-700', 'bg-indigo-500 pulse-dot'],
+      error:           ['bg-red-100 text-red-700',       'bg-red-500'],
+      pending:         ['bg-gray-100 text-gray-500',     'bg-gray-400'],
+    };
+    const [badgeCls, dotCls] = colors[status] || colors.pending;
+    badge.className = `inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full ${badgeCls}`;
+    dot.className   = `w-2 h-2 rounded-full ${dotCls}`;
+    txt.textContent = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    // Show the right section
+    const progressSection = document.getElementById('progress-section');
+    const activeSection   = document.getElementById('active-section');
+    const errorSection    = document.getElementById('error-section');
+    progressSection.classList.add('hidden');
+    activeSection.classList.add('hidden');
+    errorSection.classList.add('hidden');
+
+    if (status === 'initial_syncing' || status === 'pending') {
+      progressSection.classList.remove('hidden');
+      document.getElementById('synced-count').textContent = fmt(synced_records);
+      document.getElementById('total-count').textContent  = fmt(total_records);
+      const pct = total_records > 0 ? Math.round(synced_records / total_records * 100) : 0;
+      document.getElementById('pct-label').textContent    = pct + '%';
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+    } else if (status === 'active') {
+      activeSection.classList.remove('hidden');
+      document.getElementById('active-total').textContent = fmt(total_records);
+
+      // Poll completion: last_polled_at_ts was updated after we triggered the poll
+      if (awaitingPoll && last_polled_at_ts && pollStartTime && last_polled_at_ts > pollStartTime) {
+        finishSyncNow(); // sets awaitingPoll=false, delays button re-enable
+      } else if (!syncInProgress) {
+        setSyncNowState(false); // ensure button is enabled on normal status transitions
+      }
+
+    } else if (status === 'error') {
+      errorSection.classList.remove('hidden');
+      document.getElementById('error-message').textContent = error_message || '';
+      // If error happens mid-poll, stop the spinner (button stays disabled since
+      // active-section is hidden anyway)
+      if (syncInProgress) {
+        awaitingPoll   = false;
+        pollStartTime  = null;
+        syncInProgress = false;
+        if (syncSpinner) syncSpinner.classList.add('hidden');
+        if (syncBtnText) syncBtnText.textContent = 'Sync now';
+      }
+    }
+
+    // Update "Last synced" in local time
+    if (last_polled_at_ts && lpEl) lpEl.textContent = formatLocalTime(last_polled_at_ts);
+
+    return status;
+  }
+
+  // ── Sync Now click handler ──────────────────────────────────────────
+  if (syncNowBtn) {
+    syncNowBtn.addEventListener('click', function () {
+      if (syncInProgress) return;
+      setSyncNowState(true);
+      buttonClickTime = Date.now();
+
+      fetch(`/api/syncs/${syncId}/poll`, { method: 'POST' })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+          if (!ok) {
+            setSyncNowState(false);
+            alert(d.error || 'Could not start sync');
+            return;
+          }
+          // Subtract a buffer to account for server/client clock skew
+          pollStartTime = Date.now() - 4000;
+          awaitingPoll  = true;
+          waitForPollComplete();
+        })
+        .catch(() => setSyncNowState(false));
+    });
+
+    // Safety net: never leave the button stuck for more than 90s
+    setInterval(function () {
+      if (syncInProgress && buttonClickTime && Date.now() - buttonClickTime > 90000) {
+        awaitingPoll   = false;
+        pollStartTime  = null;
+        setSyncNowState(false);
+      }
+    }, 5000);
+  }
+
+  function waitForPollComplete() {
+    if (!awaitingPoll) return;
+    fetch(`/api/syncs/${syncId}/progress`)
+      .then(r => r.json())
+      .then(data => {
+        applyStatus(data);
+        if (awaitingPoll) setTimeout(waitForPollComplete, POLL_INTERVAL_MS);
+      })
+      .catch(() => {
+        if (awaitingPoll) setTimeout(waitForPollComplete, POLL_INTERVAL_MS * 2);
+      });
+  }
+
+  // ── Initial progress polling (for initial_syncing / pending) ────────
+  if (initialStatus === 'initial_syncing' || initialStatus === 'pending') {
+    function poll() {
+      fetch(`/api/syncs/${syncId}/progress`)
+        .then(r => r.json())
+        .then(data => {
+          const status = applyStatus(data);
+          if (status === 'initial_syncing' || status === 'pending') {
+            setTimeout(poll, POLL_INTERVAL_MS);
+          }
+        })
+        .catch(() => setTimeout(poll, POLL_INTERVAL_MS * 3));
+    }
+    setTimeout(poll, POLL_INTERVAL_MS);
+  }
+})();
+</script>
+
+{% endblock %}
