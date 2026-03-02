@@ -1,0 +1,45 @@
+# flyctl launch added from .gitignore
+# Python
+**/__pycache__
+**/*.py[cod]
+**/*.pyo
+**/*.pyd
+**/*.so
+**/*.egg
+**/*.egg-info
+**/dist
+**/build
+**/.eggs
+
+# Virtual environment
+**/venv
+**/.venv
+**/env
+
+# Environment variables — never commit real secrets
+**/.env
+
+# Claude Code local config
+**/.claude
+
+# Flask / SQLAlchemy
+**/instance
+**/*.db
+**/*.sqlite3
+
+# Flask-Migrate (keep migrations/ folder, but not compiled files)
+**/migrations/__pycache__
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# IDEs
+**/.vscode
+**/.idea
+**/*.swp
+**/*.swo
+
+# Logs
+**/*.log
+fly.toml

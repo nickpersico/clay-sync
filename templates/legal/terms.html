@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service — Close → Clay Sync{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-6 py-16">
+
+  <div class="mb-10">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
+    <p class="text-sm text-gray-400">Effective date: March 2, 2026</p>
+  </div>
+
+  <div class="prose prose-gray max-w-none space-y-8 text-sm text-gray-700 leading-relaxed">
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">1. Agreement</h2>
+      <p>
+        By accessing or using Close → Clay Sync at
+        <a href="https://clay.closekit.com" class="text-indigo-600 hover:underline">clay.closekit.com</a>
+        (the "Service"), you agree to be bound by these Terms of Service. If you do not agree,
+        do not use the Service. The Service is operated by Nick Persico ("I", "me", or "my").
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">2. Description of Service</h2>
+      <p>
+        Close → Clay Sync is a tool that connects your Close CRM account to Clay workbooks
+        via webhooks. It reads Lead and Contact records from your Close account and forwards
+        them to a Clay webhook URL you provide. The Service is not officially affiliated with,
+        endorsed by, or supported by Close CRM or Clay.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">3. Eligibility</h2>
+      <p>
+        You must have a valid Close CRM account and a Clay account to use the Service.
+        By using the Service, you represent that you have the authority to connect those
+        accounts and to authorize the Service to read data from Close on your behalf.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">4. Your Responsibilities</h2>
+      <ul class="list-disc list-inside space-y-1">
+        <li>You are responsible for the accuracy of any webhook URLs and sync configurations you provide.</li>
+        <li>You are responsible for ensuring your use of the Service complies with Close's and Clay's terms of service.</li>
+        <li>You must not use the Service for any unlawful purpose or in a way that could harm others.</li>
+        <li>You are responsible for maintaining the security of your Close account credentials.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">5. Data Access</h2>
+      <p>
+        The Service accesses your Close account using OAuth 2.0. You may revoke this access
+        at any time through your Close account settings. Revoking access will prevent future
+        syncs but will not delete data already forwarded to Clay.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">6. Availability</h2>
+      <p>
+        The Service is provided on an "as available" basis. I do not guarantee any specific
+        uptime or reliability. Sync jobs may be delayed, interrupted, or fail due to issues
+        with the Service, Close's API, Clay's webhook endpoint, or third-party infrastructure.
+        I reserve the right to modify, suspend, or discontinue the Service at any time without notice.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">7. Disclaimer of Warranties</h2>
+      <p>
+        THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND,
+        EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. I DO NOT WARRANT THAT THE
+        SERVICE WILL BE ERROR-FREE OR UNINTERRUPTED.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">8. Limitation of Liability</h2>
+      <p>
+        TO THE FULLEST EXTENT PERMITTED BY LAW, I SHALL NOT BE LIABLE FOR ANY INDIRECT,
+        INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF
+        THE SERVICE, INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR BUSINESS INTERRUPTION,
+        EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">9. Changes to Terms</h2>
+      <p>
+        I may update these Terms at any time. Continued use of the Service after changes
+        are posted constitutes your acceptance of the revised Terms. It is your responsibility
+        to review these Terms periodically.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">10. Governing Law</h2>
+      <p>
+        These Terms are governed by the laws of the State of Maryland, without regard to
+        its conflict of law provisions.
+      </p>
+    </section>
+
+    <section>
+      <h2 class="text-base font-semibold text-gray-900 mb-2">11. Contact</h2>
+      <p>
+        Questions about these Terms may be sent to
+        <a href="mailto:nick@closekit.com" class="text-indigo-600 hover:underline">nick@closekit.com</a>.
+      </p>
+    </section>
+
+  </div>
+
+  <div class="mt-12 pt-8 border-t border-gray-200 flex gap-6 text-sm text-gray-400">
+    <a href="{{ url_for('main.privacy') }}" class="hover:text-gray-700 transition-colors">Privacy Policy</a>
+    <a href="{{ url_for('main.index') }}" class="hover:text-gray-700 transition-colors">← Back to app</a>
+  </div>
+
+</div>
+{% endblock %}
