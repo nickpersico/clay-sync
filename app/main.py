@@ -181,6 +181,16 @@ def sync_progress(sync_id):
     )
 
 
+@main_bp.route("/terms-of-service")
+def terms():
+    return render_template("legal/terms.html")
+
+
+@main_bp.route("/privacy-policy")
+def privacy():
+    return render_template("legal/privacy.html")
+
+
 @main_bp.route("/api/syncs/<sync_id>/poll", methods=["POST"])
 @login_required
 def trigger_poll_now(sync_id):

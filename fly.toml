@@ -1,22 +1,27 @@
-app = "clay-closekit"
-primary_region = "iad"
+# fly.toml app configuration file generated for clay-closekit on 2026-02-26T00:55:03-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'clay-closekit'
+primary_region = 'iad'
 
 [build]
 
-[env]
-  FLASK_APP = "run.py"
-
 [deploy]
-  release_command = "python migrate.py"
+  release_command = 'python migrate.py'
+
+[env]
+  FLASK_APP = 'run.py'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
 
 [[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
+  memory = '512mb'
   cpus = 1
+  memory_mb = 512

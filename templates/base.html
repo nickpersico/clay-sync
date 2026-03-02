@@ -53,5 +53,15 @@
     {% block content %}{% endblock %}
   </main>
 
+  <footer class="shrink-0 border-t border-gray-100 py-4">
+    <div class="max-w-4xl mx-auto px-6 flex items-center justify-between text-xs text-gray-400">
+      <span>Close → Clay Sync</span>
+      <div class="flex gap-4">
+        <a href="{{ url_for('main.terms') }}" class="hover:text-gray-700 transition-colors">Terms</a>
+        <a href="{{ url_for('main.privacy') }}" class="hover:text-gray-700 transition-colors">Privacy</a>
+      </div>
+    </div>
+  </footer>
+
 </body>
 </html>
