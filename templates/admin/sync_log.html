@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ sync.name }} Log — Close → Clay{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <a href="{{ url_for('admin.syncs') }}"
+       class="text-xs text-gray-400 hover:text-gray-600 transition-colors">← All syncs</a>
+
+    <div class="flex items-start justify-between mt-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ sync.name }}</h1>
+        <p class="text-sm text-gray-400 mt-1">
+          {{ sync.user.name or sync.user.email }}
+          &nbsp;·&nbsp;
+          {{ sync.entity_type | title }}s
+          &nbsp;·&nbsp;
+          <span class="inline-flex items-center gap-1 font-medium
+            {% if sync.status == 'active' %}text-green-600
+            {% elif sync.status == 'error' %}text-red-600
+            {% elif sync.status == 'initial_syncing' %}text-indigo-600
+            {% else %}text-gray-500{% endif %}">
+            <span class="w-1.5 h-1.5 rounded-full inline-block
+              {% if sync.status == 'active' %}bg-green-500
+              {% elif sync.status == 'error' %}bg-red-500
+              {% elif sync.status == 'initial_syncing' %}bg-indigo-500
+              {% else %}bg-gray-400{% endif %}">
+            </span>
+            {{ sync.status | replace('_', ' ') | title }}
+          </span>
+        </p>
+      </div>
+
+      <!-- Admin actions -->
+      <div class="flex items-center gap-2 shrink-0">
+        {% if sync.status == 'error' %}
+        <button id="reset-btn"
+                class="text-xs border border-yellow-300 text-yellow-700 hover:bg-yellow-50
+                       px-3 py-1.5 rounded-md transition-colors font-medium">
+          Reset to active
+        </button>
+        {% endif %}
+        {% if sync.status == 'active' %}
+        <button id="poll-btn"
+                class="text-xs border border-indigo-300 text-indigo-700 hover:bg-indigo-50
+                       px-3 py-1.5 rounded-md transition-colors font-medium">
+          Poll now
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left: Activity log -->
+    <div class="lg:col-span-2">
+      <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-700">Activity log</h2>
+          <span class="text-xs text-gray-400">{{ events | length }} events</span>
+        </div>
+
+        {% if events %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs text-gray-400 uppercase tracking-wide">
+              <tr>
+                <th class="px-6 py-3 text-left font-medium">Event</th>
+                <th class="px-4 py-3 text-right font-medium">+</th>
+                <th class="px-4 py-3 text-right font-medium">~</th>
+                <th class="px-4 py-3 text-right font-medium">−</th>
+                <th class="px-6 py-3 text-right font-medium">Time (UTC)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              {% for ev in events %}
+              <tr>
+                <td class="px-6 py-3">
+                  <span class="inline-block px-2 py-0.5 rounded text-xs font-medium
+                    {% if ev.event_type == 'error' %}bg-red-100 text-red-700
+                    {% elif ev.event_type == 'initial_sync_complete' %}bg-green-100 text-green-700
+                    {% elif ev.event_type == 'initial_sync_started' %}bg-indigo-100 text-indigo-700
+                    {% elif ev.event_type == 'poll_complete' %}bg-blue-100 text-blue-700
+                    {% elif ev.event_type == 'admin_reset' %}bg-yellow-100 text-yellow-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ ev.event_type | replace('_', ' ') }}
+                  </span>
+                  {% if ev.message %}
+                  <p class="text-xs text-gray-400 mt-1">{{ ev.message }}</p>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-3 text-right text-xs text-green-600 font-medium">
+                  {% if ev.records_added %}+{{ ev.records_added }}{% else %}<span class="text-gray-200">—</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-right text-xs text-blue-600 font-medium">
+                  {% if ev.records_updated %}{{ ev.records_updated }}{% else %}<span class="text-gray-200">—</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-right text-xs text-red-500 font-medium">
+                  {% if ev.records_removed %}-{{ ev.records_removed }}{% else %}<span class="text-gray-200">—</span>{% endif %}
+                </td>
+                <td class="px-6 py-3 text-right text-xs text-gray-400 whitespace-nowrap">
+                  {{ ev.created_at.strftime('%b %d, %Y %H:%M:%S') }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="px-6 py-12 text-center text-gray-400 text-sm">
+          No events yet.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right: Sync details -->
+    <div class="space-y-4">
+
+      <!-- Stats -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Stats</h2>
+        <dl class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Records</dt>
+            <dd class="font-semibold text-gray-800">
+              {{ "{:,}".format(sync.total_records or 0) }}
+              {% if sync.status == 'initial_syncing' and sync.total_records %}
+              <span class="text-xs text-gray-400 font-normal">
+                ({{ "{:,}".format(sync.synced_records or 0) }} synced)
+              </span>
+              {% endif %}
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Created</dt>
+            <dd class="text-gray-700"
+                id="created-at"
+                data-ts="{{ created_ts }}">
+              {{ sync.created_at.strftime('%b %d, %Y') }}
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Last polled</dt>
+            <dd id="last-polled"
+                data-ts="{{ last_polled_ts or '' }}"
+                class="text-gray-700">
+              {% if sync.last_polled_at %}
+                {{ sync.last_polled_at.strftime('%b %d, %Y %H:%M') }}
+              {% else %}
+                <span class="text-gray-300">Never</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500">Entity type</dt>
+            <dd class="text-gray-700 capitalize">{{ sync.entity_type }}s</dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Owner -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Owner</h2>
+        <p class="text-sm font-medium text-gray-800">{{ sync.user.name or '—' }}</p>
+        <p class="text-xs text-gray-400 mt-0.5">{{ sync.user.email }}</p>
+        <p class="text-xs text-gray-300 font-mono mt-2 break-all">{{ sync.user.close_org_id or '' }}</p>
+      </div>
+
+      <!-- Clay webhook -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Clay webhook</h2>
+        <p class="text-xs font-mono text-gray-500 break-all">{{ sync.clay_webhook_url }}</p>
+      </div>
+
+      <!-- Filter JSON -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Close filter JSON</h2>
+        <pre class="text-xs font-mono bg-gray-50 rounded-lg p-3 overflow-x-auto text-gray-600 leading-relaxed whitespace-pre-wrap">{{ close_query_pretty }}</pre>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const syncId = {{ sync.id | tojson }};
+
+  // Format timestamps in local time
+  function fmtDate(ts) {
+    return new Date(Number(ts)).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+  const createdEl = document.getElementById('created-at');
+  if (createdEl && createdEl.dataset.ts) createdEl.textContent = fmtDate(createdEl.dataset.ts);
+  const polledEl = document.getElementById('last-polled');
+  if (polledEl && polledEl.dataset.ts) polledEl.textContent = fmtDate(polledEl.dataset.ts);
+
+  // Poll now
+  const pollBtn = document.getElementById('poll-btn');
+  if (pollBtn) {
+    pollBtn.addEventListener('click', function () {
+      pollBtn.disabled = true;
+      pollBtn.textContent = 'Triggering…';
+      fetch(`/admin/api/syncs/${syncId}/poll`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) {
+            pollBtn.textContent = 'Triggered ✓';
+            setTimeout(() => location.reload(), 2000);
+          } else {
+            alert(d.error || 'Could not trigger poll.');
+            pollBtn.disabled = false;
+            pollBtn.textContent = 'Poll now';
+          }
+        })
+        .catch(() => {
+          alert('Request failed.');
+          pollBtn.disabled = false;
+          pollBtn.textContent = 'Poll now';
+        });
+    });
+  }
+
+  // Reset to active
+  const resetBtn = document.getElementById('reset-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function () {
+      if (!confirm('Reset this sync from error → active?')) return;
+      resetBtn.disabled = true;
+      resetBtn.textContent = 'Resetting…';
+      fetch(`/admin/api/syncs/${syncId}/reset`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.ok) {
+            location.reload();
+          } else {
+            alert(d.error || 'Could not reset sync.');
+            resetBtn.disabled = false;
+            resetBtn.textContent = 'Reset to active';
+          }
+        })
+        .catch(() => {
+          alert('Request failed.');
+          resetBtn.disabled = false;
+          resetBtn.textContent = 'Reset to active';
+        });
+    });
+  }
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Admin · Syncs — Close → Clay{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <a href="{{ url_for('admin.dashboard') }}"
+         class="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Admin</a>
+      <h1 class="text-2xl font-bold text-gray-900 mt-2">Syncs
+        <span class="text-lg font-normal text-gray-400 ml-1">({{ syncs | length }})</span>
+      </h1>
+    </div>
+    <a href="{{ url_for('admin.users') }}"
+       class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Users →</a>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+    {% if syncs %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
+          <tr>
+            <th class="px-6 py-3 text-left font-medium">Sync</th>
+            <th class="px-6 py-3 text-left font-medium">Owner</th>
+            <th class="px-4 py-3 text-left font-medium">Type</th>
+            <th class="px-4 py-3 text-left font-medium">Status</th>
+            <th class="px-4 py-3 text-right font-medium">Records</th>
+            <th class="px-6 py-3 text-right font-medium">Created</th>
+            <th class="px-6 py-3 text-right font-medium">Last polled</th>
+            <th class="px-6 py-3 text-right font-medium">Log</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for sync in syncs %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4">
+              <p class="font-medium text-gray-900 max-w-xs truncate">{{ sync.name }}</p>
+            </td>
+            <td class="px-6 py-4">
+              <p class="text-gray-700">{{ sync.user.name or sync.user.email }}</p>
+              <p class="text-xs text-gray-400 mt-0.5">{{ sync.user.email }}</p>
+            </td>
+            <td class="px-4 py-4 text-gray-600 capitalize">
+              {{ sync.entity_type }}
+            </td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full
+                {% if sync.status == 'active' %}bg-green-100 text-green-700
+                {% elif sync.status == 'initial_syncing' %}bg-indigo-100 text-indigo-700
+                {% elif sync.status == 'error' %}bg-red-100 text-red-700
+                {% else %}bg-gray-100 text-gray-500{% endif %}">
+                <span class="w-1.5 h-1.5 rounded-full
+                  {% if sync.status == 'active' %}bg-green-500
+                  {% elif sync.status == 'initial_syncing' %}bg-indigo-500
+                  {% elif sync.status == 'error' %}bg-red-500
+                  {% else %}bg-gray-400{% endif %}">
+                </span>
+                {{ sync.status | replace('_', ' ') | title }}
+              </span>
+            </td>
+            <td class="px-4 py-4 text-right text-gray-700">
+              {% if sync.total_records %}
+                {{ "{:,}".format(sync.total_records) }}
+              {% else %}
+                <span class="text-gray-300">—</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 text-right text-xs text-gray-400 whitespace-nowrap">
+              {{ sync.created_at.strftime('%b %d, %Y') }}
+            </td>
+            <td class="px-6 py-4 text-right text-xs text-gray-400 whitespace-nowrap">
+              {% if sync.last_polled_at %}
+                {{ sync.last_polled_at.strftime('%b %d, %Y') }}
+              {% else %}
+                <span class="text-gray-300">Never</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 text-right">
+              <a href="{{ url_for('admin.sync_log', sync_id=sync.id) }}"
+                 class="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
+                View →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="px-6 py-16 text-center text-gray-400 text-sm">
+      No syncs yet.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

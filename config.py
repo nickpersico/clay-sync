@@ -37,6 +37,10 @@ class Config:
     CLOSE_TOKEN_URL = "https://api.close.com/oauth2/token"
     CLOSE_API_BASE = "https://api.close.com/api/v1"
 
+    # Comma-separated list of emails allowed to access the /admin section.
+    # Example: "nick@close.com,other@example.com"
+    ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "")
+
     # Hard cap matching Clay's 50,000-row workbook limit.
     # The Close API limits each cursor session to 10k records, but we batch
     # across sessions using date_created range windows — so the only real

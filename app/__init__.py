@@ -17,9 +17,11 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
+    from app.admin import admin_bp
     from app.auth import auth_bp
     from app.main import main_bp
 
+    app.register_blueprint(admin_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
 

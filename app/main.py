@@ -3,7 +3,7 @@ Main application routes: dashboard, sync CRUD, and the progress API endpoint.
 """
 
 import json
-from datetime import timezone
+from datetime import datetime, timezone
 from functools import wraps
 
 from flask import (
@@ -60,6 +60,8 @@ def index():
 @login_required
 def dashboard():
     user = get_current_user()
+    user.last_visited_at = datetime.utcnow()
+    db.session.commit()
     syncs = user.syncs.order_by(Sync.created_at.desc()).all()
     return render_template("dashboard.html", user=user, syncs=syncs)
 
