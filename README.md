@@ -4,6 +4,10 @@ Syncs Close CRM Leads and Contacts to Clay workbooks via webhooks. Supports up t
 
 **Live app:** [clay.closekit.com](https://clay.closekit.com)
 
+## Walkthrough
+
+[![Watch the walkthrough](https://img.youtube.com/vi/k5ipc-VdcLg/maxresdefault.jpg)](https://youtu.be/k5ipc-VdcLg)
+
 ---
 
 ## How it works
