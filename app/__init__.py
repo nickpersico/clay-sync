@@ -31,7 +31,10 @@ def create_app():
     # Start the background scheduler only when running the web server.
     # Skip for Flask CLI commands (flask db init/migrate/upgrade, flask shell, etc.)
     import sys
-    is_cli_command = len(sys.argv) > 1 and sys.argv[1] in ("db", "shell", "routes")
+    _script = os.path.basename(sys.argv[0]) if sys.argv else ""
+    is_cli_command = _script == "migrate.py" or (
+        len(sys.argv) > 1 and sys.argv[1] in ("db", "shell", "routes")
+    )
     if not is_cli_command and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
         from app.scheduler import init_scheduler
 
