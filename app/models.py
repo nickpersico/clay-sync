@@ -21,6 +21,7 @@ class User(db.Model):
     refresh_token = db.Column(db.Text)
     token_expires_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_visited_at = db.Column(db.DateTime)
 
     syncs = db.relationship("Sync", back_populates="user", lazy="dynamic")
 
@@ -57,6 +58,13 @@ class Sync(db.Model):
         lazy="dynamic",
         cascade="all, delete-orphan",
     )
+    events = db.relationship(
+        "SyncEvent",
+        back_populates="sync",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+        order_by="SyncEvent.created_at.desc()",
+    )
 
     def __repr__(self):
         return f"<Sync {self.name!r} [{self.status}]>"
@@ -85,3 +93,37 @@ class SyncRecord(db.Model):
 
     def __repr__(self):
         return f"<SyncRecord {self.close_record_id}>"
+
+
+class SyncEvent(db.Model):
+    """
+    Persistent activity log for a sync.
+    Written by sync_engine.py at key lifecycle points so the admin can see
+    a full history of what happened for each sync.
+
+    event_type values:
+      initial_sync_started   — initial sync job began
+      initial_sync_complete  — initial sync finished successfully
+      poll_complete          — hourly (or manual) poll finished with ≥1 change
+      error                  — any error that stopped a sync job
+    """
+    __tablename__ = "sync_events"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    sync_id = db.Column(db.String(36), db.ForeignKey("syncs.id"), nullable=False)
+    event_type = db.Column(db.String(50), nullable=False)
+    message = db.Column(db.Text)
+    records_added = db.Column(db.Integer, default=0)
+    records_updated = db.Column(db.Integer, default=0)
+    records_removed = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sync = db.relationship("Sync", back_populates="events")
+
+    __table_args__ = (
+        db.Index("ix_sync_events_sync_id", "sync_id"),
+        db.Index("ix_sync_events_created_at", "created_at"),
+    )
+
+    def __repr__(self):
+        return f"<SyncEvent {self.event_type} sync={self.sync_id}>"

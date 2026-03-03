@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Admin · Users — Close → Clay{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <a href="{{ url_for('admin.dashboard') }}"
+         class="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Admin</a>
+      <h1 class="text-2xl font-bold text-gray-900 mt-2">Users
+        <span class="text-lg font-normal text-gray-400 ml-1">({{ users | length }})</span>
+      </h1>
+    </div>
+    <a href="{{ url_for('admin.syncs') }}"
+       class="text-sm text-gray-500 hover:text-gray-900 transition-colors">Syncs →</a>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+    {% if users %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
+          <tr>
+            <th class="px-6 py-3 text-left font-medium">User</th>
+            <th class="px-6 py-3 text-left font-medium">Close org</th>
+            <th class="px-4 py-3 text-right font-medium">Syncs</th>
+            <th class="px-6 py-3 text-right font-medium">Signed up</th>
+            <th class="px-6 py-3 text-right font-medium">Last visited</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for user in users %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4">
+              <p class="font-medium text-gray-900">{{ user.name or '—' }}</p>
+              <p class="text-xs text-gray-400 mt-0.5">{{ user.email or '—' }}</p>
+            </td>
+            <td class="px-6 py-4 text-xs text-gray-400 font-mono">
+              {{ user.close_org_id or '—' }}
+            </td>
+            <td class="px-4 py-4 text-right">
+              {% set count = sync_counts.get(user.id, 0) %}
+              {% if count %}
+              <a href="{{ url_for('admin.syncs') }}?user={{ user.id }}"
+                 class="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                {{ count }}
+              </a>
+              {% else %}
+              <span class="text-gray-300">0</span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 text-right text-xs text-gray-400 whitespace-nowrap">
+              {{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}
+            </td>
+            <td class="px-6 py-4 text-right text-xs text-gray-400 whitespace-nowrap">
+              {% if user.last_visited_at %}
+                {{ user.last_visited_at.strftime('%b %d, %Y at %I:%M %p') }}
+              {% else %}
+                <span class="text-gray-300">Never</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="px-6 py-16 text-center text-gray-400 text-sm">
+      No users yet.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

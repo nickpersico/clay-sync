@@ -111,6 +111,7 @@ def close_callback():
     user.access_token = access_token
     user.refresh_token = refresh_token
     user.token_expires_at = expires_at
+    user.last_visited_at = datetime.utcnow()
     db.session.commit()
 
     session["user_id"] = user.id

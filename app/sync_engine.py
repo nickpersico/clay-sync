@@ -15,7 +15,7 @@ import logging
 from datetime import datetime
 
 from app import db
-from app.models import Sync, SyncRecord
+from app.models import Sync, SyncEvent, SyncRecord
 from app.close_client import CloseClient, CloseAPIError
 from app.clay_client import ClayClient, ClayWebhookError
 
@@ -38,9 +38,27 @@ def _close_client_for_sync(sync, app_config):
     )
 
 
+def _log_event(sync_id, event_type, message=None,
+               records_added=0, records_updated=0, records_removed=0):
+    """Write a SyncEvent row. Safe to call inside an existing DB session."""
+    try:
+        db.session.add(SyncEvent(
+            sync_id=sync_id,
+            event_type=event_type,
+            message=message,
+            records_added=records_added,
+            records_updated=records_updated,
+            records_removed=records_removed,
+        ))
+        db.session.flush()  # include in the next commit without a separate one
+    except Exception as exc:
+        logger.warning("Failed to write SyncEvent (%s): %s", event_type, exc)
+
+
 def _set_error(sync, message):
     sync.status = "error"
     sync.error_message = message
+    _log_event(sync.id, "error", message=message)
     db.session.commit()
     logger.error("Sync %s error: %s", sync.id, message)
 
@@ -70,6 +88,7 @@ def run_initial_sync(app, sync_id):
         sync.synced_records = 0
         sync.total_records = 0
         sync.error_message = None
+        _log_event(sync_id, "initial_sync_started", message="Initial sync started.")
         db.session.commit()
 
         close = _close_client_for_sync(sync, app.config)
@@ -161,6 +180,11 @@ def run_initial_sync(app, sync_id):
 
         sync.status = "active"
         sync.last_polled_at = datetime.utcnow()
+        _log_event(
+            sync_id, "initial_sync_complete",
+            message=f"Initial sync complete. {sync.synced_records:,} records pushed to Clay.",
+            records_added=sync.synced_records,
+        )
         db.session.commit()
         logger.info(
             "Initial sync complete for '%s': %d records", sync.name, sync.synced_records
@@ -292,6 +316,22 @@ def run_poll(app, sync_id):
 
         sync.last_polled_at = datetime.utcnow()
         sync.total_records = len(current_ids)
+        if changes > 0:
+            parts = []
+            if added:
+                parts.append(f"{len(added)} added")
+            if removed:
+                parts.append(f"{len(removed)} removed")
+            updated_count = changes - len(added) - len(removed)
+            if updated_count > 0:
+                parts.append(f"{updated_count} updated")
+            _log_event(
+                sync_id, "poll_complete",
+                message=f"Poll complete: {', '.join(parts)}.",
+                records_added=len(added),
+                records_updated=max(updated_count, 0),
+                records_removed=len(removed),
+            )
         db.session.commit()
         logger.info(
             "Poll complete for '%s': %d change(s)", sync.name, changes
