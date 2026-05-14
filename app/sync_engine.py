@@ -38,6 +38,20 @@ def _close_client_for_sync(sync, app_config):
     )
 
 
+def _slim_record(record: dict) -> dict:
+    """
+    Reduce the lead's inlined `contacts` and `opportunities` arrays to lists
+    of IDs. A lead with 100 contacts can produce a >130 KB payload, which
+    Clay's webhook rejects with 413 PayloadTooLarge.
+    """
+    slimmed = dict(record)
+    for key in ("contacts", "opportunities"):
+        items = slimmed.get(key)
+        if isinstance(items, list):
+            slimmed[key] = [it["id"] for it in items if isinstance(it, dict) and it.get("id")]
+    return slimmed
+
+
 def _log_event(sync_id, event_type, message=None,
                records_added=0, records_updated=0, records_removed=0):
     """Write a SyncEvent row. Safe to call inside an existing DB session."""
@@ -148,6 +162,7 @@ def run_initial_sync(app, sync_id):
                 )
                 continue
 
+            record = _slim_record(record)
             payload = {"_close_id": record_id, **record}
 
             try:
@@ -261,6 +276,7 @@ def run_poll(app, sync_id):
                 logger.warning("Could not fetch new record %s: %s — skipping", record_id, exc)
                 continue
 
+            record = _slim_record(record)
             try:
                 clay.send_record({"_close_id": record_id, **record})
                 db.session.add(
@@ -303,6 +319,7 @@ def run_poll(app, sync_id):
                 )
                 continue
 
+            record = _slim_record(record)
             if record == (sr.record_data or {}):
                 continue  # identical despite different date_updated (edge case)
 
