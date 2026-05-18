@@ -23,6 +23,7 @@ Bypassing the 10k limit (date-range windowing)
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timedelta
 
 import requests
@@ -32,6 +33,27 @@ logger = logging.getLogger(__name__)
 CLOSE_API_BASE = "https://api.close.com/api/v1"
 CLOSE_TOKEN_URL = "https://api.close.com/oauth2/token"
 SEARCH_ENDPOINT = "/data/search/"
+
+# Rate-limit handling.
+# Close returns 429 with a `RateLimit: limit=N, remaining=N, reset=N` header.
+# The recommended strategy (per Close docs) is to sleep for `reset` seconds
+# and retry. We fall back to `Retry-After`, then a small default.
+MAX_429_RETRIES = 5
+DEFAULT_429_BACKOFF_S = 5
+
+
+def _parse_ratelimit_reset(header_value: str) -> int | None:
+    """Parse `reset=N` out of a `RateLimit: limit=…, remaining=…, reset=N` header."""
+    if not header_value:
+        return None
+    for part in header_value.split(","):
+        part = part.strip()
+        if part.startswith("reset="):
+            try:
+                return max(1, int(float(part.split("=", 1)[1])))
+            except ValueError:
+                return None
+    return None
 
 
 class CloseAPIError(Exception):
@@ -112,17 +134,45 @@ class CloseClient:
             except Exception as exc:
                 logger.warning("Failed to persist refreshed token: %s", exc)
 
+    def _request_with_retry(self, method, url, **kwargs):
+        """
+        Issue a request, retrying on 429 according to Close's RateLimit header.
+        After MAX_429_RETRIES, returns the last response so `_check_response`
+        raises a normal CloseAPIError.
+        """
+        resp = None
+        for attempt in range(MAX_429_RETRIES + 1):
+            resp = requests.request(method, url, timeout=30, **kwargs)
+            if resp.status_code != 429:
+                return resp
+            wait = _parse_ratelimit_reset(resp.headers.get("RateLimit", ""))
+            if wait is None:
+                try:
+                    wait = int(resp.headers.get("Retry-After", DEFAULT_429_BACKOFF_S))
+                except ValueError:
+                    wait = DEFAULT_429_BACKOFF_S
+            logger.warning(
+                "Close API 429 on %s %s — sleeping %ds (attempt %d/%d)",
+                method, url, wait, attempt + 1, MAX_429_RETRIES + 1,
+            )
+            time.sleep(wait)
+        return resp
+
     def _post(self, path, json_body):
         self._maybe_refresh()
         url = f"{CLOSE_API_BASE}{path}"
-        resp = requests.post(url, headers=self._headers, json=json_body, timeout=30)
+        resp = self._request_with_retry(
+            "POST", url, headers=self._headers, json=json_body
+        )
         self._check_response(resp)
         return resp.json()
 
     def _get(self, path, params=None):
         self._maybe_refresh()
         url = f"{CLOSE_API_BASE}{path}"
-        resp = requests.get(url, headers=self._headers, params=params, timeout=30)
+        resp = self._request_with_retry(
+            "GET", url, headers=self._headers, params=params
+        )
         self._check_response(resp)
         return resp.json()
 
